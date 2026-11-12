@@ -1,0 +1,38 @@
+name: probe-tailscale
+# Minimal probe: join the tailnet so Oracle can SSH in and verify the tunnel.
+# Dispatch manually, hold the tunnel open, then SSH from Oracle to check.
+on:
+  workflow_dispatch:
+    inputs:
+      hold_minutes:
+        description: "Minutes to hold the tunnel open for verification"
+        default: "30"
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 60
+    steps:
+      - name: Install Tailscale
+        run: |
+          curl -fsSL https://tailscale.com/install.sh | sh
+      - name: Join tailnet
+        env:
+          TS_AUTHKEY: ${{ secrets.TS_AUTHKEY }}
+        run: |
+          sudo tailscale up --authkey="$TS_AUTHKEY" --hostname="gh-probe-${{ github.run_id }}"
+          echo "=== tailnet IP ==="
+          tailscale ip -4
+          echo "=== tailscale status ==="
+          tailscale status
+      - name: Enable Tailscale SSH
+        run: |
+          sudo tailscale set --ssh=true || echo "tailscale set --ssh failed (may already be on, or not permitted)"
+          tailscale status
+      - name: Hold tunnel open
+        run: |
+          echo "Runner tailnet IP: $(tailscale ip -4)"
+          echo "Hostname: gh-probe-${{ github.run_id }}"
+          echo "Holding for ${{ inputs.hold_minutes }} minutes so Oracle can SSH in and verify."
+          sleep $(( ${{ inputs.hold_minutes }} * 60 ))
