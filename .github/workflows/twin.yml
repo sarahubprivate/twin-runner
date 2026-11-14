@@ -141,7 +141,8 @@ jobs:
           [ -z "$RI" ] || { echo "::error::give runtime_image or runtime_asset, not both"; exit 1; }
           [[ "$A" =~ ^[A-Za-z0-9._+-]+\.sqfs$ ]] || { echo "::error::runtime_asset must be an asset name ending in .sqfs: $A"; exit 1; }
           d=$(mktemp -d)
-          python3 ci/ghrel.py download sarahubprivate/twinci builds "$d" "$A" "$A.sha256"
+          python3 ci/ghrel.py download sarahubprivate/twinci builds-2 "$d" "$A" "$A.sha256" 2>/dev/null ||
+            python3 ci/ghrel.py download sarahubprivate/twinci builds "$d" "$A" "$A.sha256"
           want=$(cut -d' ' -f1 "$d/$A.sha256"); got=$(sha256sum "$d/$A" | cut -d' ' -f1)
           echo "$A: sha256 $got, $A.sha256 says $want, $(stat -c %s "$d/$A") bytes"
           [ "$want" = "$got" ] || { echo "::error::$A does not match its .sha256"; exit 1; }
@@ -159,7 +160,8 @@ jobs:
           [ -z "$RI" ] || { echo "::error::runtime_asset_2 cannot combine with runtime_image (one image applies to all twins)"; exit 1; }
           [[ "$A" =~ ^[A-Za-z0-9._+-]+\.sqfs$ ]] || { echo "::error::runtime_asset_2 must be an asset name ending in .sqfs: $A"; exit 1; }
           d=$(mktemp -d)
-          python3 ci/ghrel.py download sarahubprivate/twinci builds "$d" "$A" "$A.sha256"
+          python3 ci/ghrel.py download sarahubprivate/twinci builds-2 "$d" "$A" "$A.sha256" 2>/dev/null ||
+            python3 ci/ghrel.py download sarahubprivate/twinci builds "$d" "$A" "$A.sha256"
           want=$(cut -d' ' -f1 "$d/$A.sha256"); got=$(sha256sum "$d/$A" | cut -d' ' -f1)
           echo "$A: sha256 $got, $A.sha256 says $want, $(stat -c %s "$d/$A") bytes"
           [ "$want" = "$got" ] || { echo "::error::$A does not match its .sha256"; exit 1; }
