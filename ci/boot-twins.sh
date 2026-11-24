@@ -1,6 +1,6 @@
 #!/bin/bash
 # boot-twins.sh <n twins> <tv cpus> [runtime.sqfs [slot [runtime2.sqfs [slot2]]]]   (run as root on the runner; images and $W/{tree,state,apks} ready)
-# slot: runtime (64-bit, default) or runtime32: the installed webosatl/<slot>.sqfs that the test image replaces
+# slot: runtime (64-bit, default) or runtime32: the installed webosatl/<slot>.sqfs that the test image replaces (installed if the state has none)
 # Each twin = copy of Oracle's twin3 tree renamed twinA / twinB, fresh volumes restored from the twin3 snapshot,
 # one shared sqfs cache volume. Fixed caps: TV <tv cpus>, harness 0.25 CPU (Oracle: TV 1.0 on N1, harness 0.25).
 # v4 per-twin runtimes: when runtime2 is given, twin index 1 (twinb) boots runtime2/slot2; twin index 0 (twina)
@@ -52,8 +52,14 @@ EOF
   done
   if [ -n "$TRT" ]; then  # installed runtime = the test image, in place before the twin boots (mounting after boot fails)
     M=$(docker volume inspect -f '{{.Mountpoint}}' $T-media)/webosatl
-    [ -f $M/$TSLOT.sqfs ] || { echo "state ${T}: no webosatl/$TSLOT.sqfs to replace (use a state with that runtime installed)" >&2; exit 1; }
-    o=$(stat -c %u:%g $M/$TSLOT.sqfs); cp -f image/$E.sqfs $M/$TSLOT.sqfs.new && chown $o $M/$TSLOT.sqfs.new && mv -f $M/$TSLOT.sqfs.new $M/$TSLOT.sqfs
+    mkdir -p $M
+    if [ -f $M/$TSLOT.sqfs ]; then
+      o=$(stat -c %u:%g $M/$TSLOT.sqfs); cp -f image/$E.sqfs $M/$TSLOT.sqfs.new && chown $o $M/$TSLOT.sqfs.new && mv -f $M/$TSLOT.sqfs.new $M/$TSLOT.sqfs
+    else  # state has no slot file yet: install the test image instead of failing
+      if [ -f $M/runtime.sqfs ]; then o=$(stat -c %u:%g $M/runtime.sqfs); else o=0:0; fi
+      cp -f image/$E.sqfs $M/$TSLOT.sqfs.new && chown $o $M/$TSLOT.sqfs.new && mv -f $M/$TSLOT.sqfs.new $M/$TSLOT.sqfs
+      echo "$T $TSLOT.sqfs: installed (no $TSLOT.sqfs in state, owner $o)"
+    fi
     echo "$T $TSLOT.sqfs -> $(sha256sum $M/$TSLOT.sqfs | cut -c1-16)"
   fi
 done
